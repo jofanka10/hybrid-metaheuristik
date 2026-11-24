@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Card Wars SOKA 3D: Hybrid Metaheuristik (MCT-PSO &amp; Hybrid GOA-ALO)</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2348B2F2'/%3E%3Crect x='5' y='4' width='22' height='24' rx='4' fill='%23F2C94C' stroke='%231A1816' stroke-width='2.5'/%3E%3Cpolygon points='16,9 22,16 16,23 10,16' fill='%23B91C1C' stroke='%231A1816' stroke-width='1.5'/%3E%3C/svg%3E" />
+
+  <!-- Card Wars Cartoon-Editorial Typography: Fredoka + Syne + Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind Utility Layer -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fredoka', 'Syne', 'Trebuchet MS', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'Segoe UI', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Three.js ESM Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="./css/atlas-theme.css?v=7" />
+</head>
+<body class="font-sans is-intro">
+
+  <!-- ====================================================================== -->
+  <!-- FULL-VIEWPORT 3D CARD WARS TABLETOP WORLD + SIR PIP BUTLER             -->
+  <!-- ====================================================================== -->
+  <div id="world-3d-layer" class="world-3d-layer" aria-hidden="true">
+    <div id="world-webgl-mount" class="world-webgl-mount"></div>
+    <div id="world-2d-fallback" class="world-2d-fallback hidden"></div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- FLOATING CARTOON TOP HUD OVER SUNNY SKY                                -->
+  <!-- ====================================================================== -->
+  <header class="table-hud">
+    <div class="hud-brand">
+      <span class="font-display font-bold text-[15px] tracking-wide text-[#FDE047] truncate">CARD WARS SOKA</span>
+      <span id="hud-opened-count" class="hud-counter">Kartu: 0 / 9</span>
+    </div>
+    <div class="hud-actions">
+      <button type="button" id="hud-intro-btn" class="btn btn-compact hidden sm:inline-flex" title="Kembali ke intro sapaan Sir Pip">
+        Intro
+      </button>
+      <button type="button" id="hud-peek-btn" class="btn btn-gold btn-compact" title="Intip penuh meja 3D & Butler Sir Pip (Tombol T)">
+        Intip Meja 3D (T)
+      </button>
+      <button type="button" id="hud-render-toggle" class="btn btn-navy btn-compact hidden md:inline-flex" title="Beralih antara Meja 3D WebGL dan 2D SVG">
+        Meja: 3D
+      </button>
+      <button type="button" id="hud-spread-btn" class="btn btn-navy btn-compact" aria-expanded="false" aria-controls="table-spread-modal">
+        Meja 9 Kartu (G)
+      </button>
+      <button type="button" id="hud-reset-deck" class="btn btn-compact hidden lg:inline-flex" title="Tutup kembali semua kartu untuk presentasi baru">
+        Balik Semua
+      </button>
+      <button type="button" id="hud-reveal-all" class="btn btn-gold btn-compact hidden xl:inline-flex">
+        Buka Semua
+      </button>
+    </div>
+  </header>
+
+  <!-- ====================================================================== -->
+  <!-- SCENE 0: INTRO STAGE WITH SIR PIP AT 3D TABLE BEFORE FLIPPING CARD I   -->
+  <!-- ====================================================================== -->
+  <section id="intro-stage" class="intro-stage" aria-label="Intro Sir Pip sebelum membalik kartu">
+    <div class="intro-speech-card">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2.5">
+          <div id="intro-butler-badge" class="butler-badge-wrap"></div>
+          <div>
+            <span id="intro-mood-pill" class="butler-mood-pill">INTRO 1 / 2 | SIR PIP MENYAPA</span>
+            <h1 id="intro-title" class="font-display font-bold text-[20px] md:text-[24px] text-ink m-0 mt-0.5 leading-tight">
+              Selamat Datang di Meja Card Wars SOKA!
+            </h1>
+          </div>
+        </div>
+        <div id="intro-step-dots" class="intro-step-dots" aria-hidden="true">
+          <span class="intro-dot is-active"></span>
+          <span class="intro-dot"></span>
+        </div>
+      </div>
+
+      <p id="intro-body" class="text-[14px] text-muted m-0 mb-3.5 leading-relaxed">
+        Halo! Saya <strong>Sir Pip</strong>, Butler meja strategi ini. Sebelum membalik kartu pertama, santai dulu: saya akan memandu kamu memahami <span class="kw-mct">MCT-PSO</span> dan <span class="kw-alo">Hybrid GOA-ALO</span> dari nol lewat animasi shapes singkat seperti video Shorts.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span class="font-mono-num text-[11px] text-muted">Tekan <strong>Space / Enter</strong> atau klik tombol di kanan</span>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" id="intro-skip-btn" class="btn btn-compact">Langsung ke Kartu I</button>
+          <button type="button" id="intro-next-btn" class="btn btn-primary btn-compact">Lanjut Intro -&gt;</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Floating Return Pill when Peeking at Full 3D Card Wars Table -->
+  <div id="peek-return-bar" class="peek-return-bar" role="region" aria-label="Mode Intip Meja 3D">
+    <span class="font-mono-num text-[11.5px] font-bold text-[#FDE047]">SIR PIP &amp; MEJA 3D AKTIF</span>
+    <button type="button" id="peek-return-btn" class="btn btn-gold btn-compact">Kembali ke Panggung (T)</button>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- FLOATING COMIC SPEECH BUBBLE DIRECTLY ATTACHED BELOW 3D SIR PIP        -->
+  <!-- ====================================================================== -->
+  <aside id="butler-dialogue-box" class="butler-dialogue-box" aria-live="polite" aria-label="Dialog Butler Sir Pip">
+    <div class="butler-head-row">
+      <div id="butler-badge-svg" class="butler-badge-wrap"></div>
+      <div class="min-w-0">
+        <span id="butler-mood-pill" class="butler-mood-pill">HOOK | SIR PIP MENYAPA</span>
+        <div class="font-mono-num text-[10px] font-bold text-muted mt-0.5">DIALOG BUTLER SIR PIP</div>
+      </div>
+    </div>
+    <div id="butler-caption-inner" class="butler-caption-inner">
+      <div id="butler-hook-text" class="butler-hook-text">3 Bentuk Rahasia di Dek Hybrid Ini!</div>
+      <p id="butler-caption-text" class="butler-caption-text"></p>
+    </div>
+    <div class="butler-beat-controls">
+      <button type="button" id="beat-prev-btn" class="btn btn-compact" aria-label="Beat sebelumnya">&lt;- Beat</button>
+      <button type="button" id="beat-next-btn" class="btn btn-primary btn-compact" aria-label="Beat berikutnya">Lanjut Beat -&gt;</button>
+    </div>
+  </aside>
+
+  <!-- ====================================================================== -->
+  <!-- HOLOGRAPHIC CARD WARS DIORAMA STAGE (LEFT WINDOW OPEN FOR 3D SIR PIP)  -->
+  <!-- ====================================================================== -->
+  <main class="tabletop-arena" aria-live="polite">
+    <div class="playmat-frame">
+      <div id="card-flipper" class="card-flipper">
+
+        <!-- ==================== CARD FRONT FACE (SHORTS + INTERACTIVE) ==================== -->
+        <div id="card-front-face" class="card-face card-face-front" data-stage-mode="diorama">
+
+          <!-- Top Shorts Segmented Progress Bar + Card Info -->
+          <div class="card-top-ribbon">
+            <div id="shorts-progress-bar" class="shorts-progress-bar" role="navigation" aria-label="Progres beat cerita Shorts"></div>
+            <div class="card-ribbon-row">
+              <div class="card-pip-tag">
+                <span id="card-front-suit" class="suit-chip suit-concept">◆</span>
+                <span id="card-front-num">KARTU I / IX</span>
+                <span>|</span>
+                <span id="card-front-role">DEK PENGANTAR</span>
+                <span class="hidden sm:inline">|</span>
+                <span id="shorts-beat-counter" class="hidden sm:inline bg-[#1A1816] text-[#FDE047] px-2 py-0.5 rounded-[5px]">BEAT 1 / 4</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" id="shorts-mode-toggle" class="btn btn-goa btn-compact">Buka Simulator / Data</button>
+                <button type="button" id="card-flip-toggle" class="btn btn-compact">Balik Kartu (F)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center Stage Body (All 9 Interactive Cards Preserved) -->
+          <div id="card-body-scroll" class="card-body-scroll">
+
+            <!-- CARD I: PENGANTAR & 3 SIMBOL KARTU -->
+            <section id="cover" class="slide is-active" aria-label="Kartu I: Pengantar Dek Hybrid Metaheuristik">
+              <div class="flex flex-wrap items-end justify-between gap-2 mb-2.5">
+                <div class="max-w-[680px]">
+                  <h1 class="slide-title text-[22px] md:text-[30px]">Bagaimana Dua Algoritma Optimasi Bekerja Sama?</h1>
+                  <p class="text-[13px] text-muted mt-1 mb-0 interactive-only">
+                    Ikuti beat cerita Sir Pip atau pilih langsung 3 suit bentuk geometris di bawah: <strong>MCT-seeded PSO</strong>, <strong>Hybrid GOA-ALO</strong>, hingga uji coba 3D.
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-1.5 interactive-only">
+                  <button type="button" id="btn-start-deck" class="btn btn-primary btn-compact">Ambil Kartu II -></button>
+                  <button type="button" id="btn-jump-lab" class="btn btn-compact">Langsung ke Kartu VII (Lab 3D)</button>
+                </div>
+              </div>
+
+              <div class="studio-card p-2.5 mb-2.5 diorama-focus-svg">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                  <span class="font-mono-num text-[10.5px] font-bold text-muted">DIORAMA 3 SUIT GEOMETRIS (MCT, GOA, ALO)</span>
+                  <button type="button" id="cover-replay-btn" class="btn btn-compact text-[11.5px]">Putar Ulang</button>
+                </div>
+                <div id="cover-story-svg"></div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 interactive-only">
+                <button type="button" class="cover-chapter-btn is-active" data-focus="all" aria-pressed="true">
+                  <div class="font-mono-num text-[11px] font-bold text-ink mb-0.5">SEMUA SUIT</div>
+                  <div class="text-[12px] text-muted">Start rapi, jelajah luas, kunci tajam.</div>
+                </button>
+                <button type="button" class="cover-chapter-btn" data-focus="mct" aria-pressed="false">
+                  <div class="flex items-center gap-2 font-mono-num text-[11px] font-bold text-mct mb-0.5"><span class="shape-key-sq"></span>SUIT KOTAK = MCT</div>
+                  <div class="text-[12px] text-muted">Aturan pasti satu jalan untuk start rapi.</div>
+                </button>
+                <button type="button" class="cover-chapter-btn" data-focus="goa" aria-pressed="false">
+                  <div class="flex items-center gap-2 font-mono-num text-[11px] font-bold text-goa mb-0.5"><span class="shape-key-ci"></span>SUIT LINGKARAN = GOA</div>
+                  <div class="text-[12px] text-muted">Kawanan saling dorong-tarik menyisir peta.</div>
+                </button>
+                <button type="button" class="cover-chapter-btn" data-focus="alo" aria-pressed="false">
+                  <div class="flex items-center gap-2 font-mono-num text-[11px] font-bold text-alo mb-0.5"><span class="shape-key-tri"></span>SUIT CORONG = ALO</div>
+                  <div class="text-[12px] text-muted">Corong pasir menyempit mengunci target.</div>
+                </button>
+              </div>
+            </section>
+
+            <!-- CARD II: KONSEP DASAR PEMULA -->
+            <section id="intuition" class="slide" aria-label="Kartu II: Konsep Dasar Optimasi">
+              <div class="mb-2">
+                <h2 class="slide-title text-[21px] md:text-[26px]">Apa Itu Optimasi? Bayangkan Mencari Lembah Terdalam</h2>
+              </div>
+
+              <div class="intuition-grid">
+                <div class="flex flex-col gap-2 min-w-0">
+                  <div class="studio-card p-2.5 diorama-focus-svg">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                      <span class="font-mono-num text-[10.5px] font-bold text-muted">ANIMASI SHAPES RUANG PENCARIAN</span>
+                      <button type="button" id="intuition-replay-btn" class="btn btn-goa btn-compact text-[11.5px]">Putar 3 Tahap Beruntun</button>
+                    </div>
+                    <div id="intuition-terrain-svg"></div>
+                  </div>
+
+                  <div class="story-lead interactive-only">
+                    <div id="intuition-explain-title" class="font-display font-bold text-[14.5px] text-ink mb-0.5">Tahap 1: Jika Hanya Menebak Acak</div>
+                    <p id="intuition-explain-body" class="text-[13px] text-muted m-0"></p>
+                  </div>
+                </div>
+
+                <aside class="studio-panel p-3 flex flex-col justify-between gap-2 interactive-only">
+                  <div class="flex flex-col gap-2">
+                    <div class="font-mono-num text-[10.5px] font-bold text-ink">PILIH TAHAP ANIMASI:</div>
+                    <button type="button" class="stage-step-btn is-active" data-stage="random" aria-pressed="true">
+                      <div class="font-mono-num text-[10px] font-bold text-muted">TAHAP 1: MASALAH AWAL</div>
+                      <div class="font-display font-bold text-[13.5px] text-ink">Tebakan Acak -> Terjebak Lokal</div>
+                      <p class="text-[11.5px] text-muted m-0">Berhenti di lubang dangkal pertama yang ditemui.</p>
+                    </button>
+                    <button type="button" class="stage-step-btn" data-stage="explore" aria-pressed="false">
+                      <div class="font-mono-num text-[10px] font-bold text-goa">TAHAP 2: EKSPLORASI</div>
+                      <div class="font-display font-bold text-[13.5px] text-ink">Menyebar Melampaui Bukit</div>
+                      <p class="text-[11.5px] text-muted m-0">Lingkaran biru menyisir peta sampai lembah terdalam tampak.</p>
+                    </button>
+                    <button type="button" class="stage-step-btn" data-stage="exploit" aria-pressed="false">
+                      <div class="font-mono-num text-[10px] font-bold text-alo">TAHAP 3: EKSPLOITASI</div>
+                      <div class="font-display font-bold text-[13.5px] text-ink">Mengerucut ke Titik Terbaik</div>
+                      <p class="text-[11.5px] text-muted m-0">Corong merah mempersempit langkah ke dasar lembah global.</p>
+                    </button>
+                  </div>
+                  <div class="story-lead story-lead-mct">
+                    <p class="text-[12px] text-ink m-0">
+                      <strong>Inti:</strong> Terlalu luas = lambat presisi. Terlalu cepat sempit = terjebak lubang salah.
+                    </p>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <!-- CARD III: TAKSONOMI POLA B VS POLA C -->
+            <section id="taxonomy" class="slide" aria-label="Kartu III: Pola B vs Pola C">
+              <div class="flex flex-wrap items-end justify-between gap-2 mb-2">
+                <h2 class="slide-title text-[20px] md:text-[25px]">Dua Pola Hibridisasi: Model Estafet vs Model Kerja Tim</h2>
+                <div id="tax-tabs" class="seg-tabs interactive-only" role="tablist" aria-label="Sorot fase hibridisasi">
+                  <div class="seg-indicator"></div>
+                  <button type="button" class="seg-tab" role="tab" data-value="all">Semua Fase</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="init">Inisialisasi</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="explore">Eksplorasi</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="exploit">Eksploitasi</button>
+                </div>
+              </div>
+
+              <div class="studio-card p-2.5 mb-2.5 diorama-focus-svg"><div id="tax-svg"></div></div>
+
+              <div class="studio-panel p-2.5 overflow-x-auto interactive-only">
+                <table class="studio-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 17%">Aspek</th>
+                      <th style="width: 41.5%">Pola B: MCT-seeded PSO (Estafet)</th>
+                      <th style="width: 41.5%">Pola C: Hybrid GOA-ALO (Kerja Tim)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="font-semibold">Cara Gabung</td>
+                      <td><strong>Heuristik -> Metaheuristik:</strong> MCT bekerja sekali di awal, hasilnya diteruskan ke PSO.</td>
+                      <td><strong>Metaheuristik + Metaheuristik:</strong> GOA dan ALO bertukar informasi tiap iterasi.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-semibold">Tujuan Utama</td>
+                      <td>Menghindari start acak buruk pada penjadwalan tugas (<em>Makespan</em>).</td>
+                      <td>Menyeimbangkan eksplorasi luas GOA dan eksploitasi corong ALO secara presisi.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-semibold">Rujukan</td>
+                      <td><strong>Alsaidy, Abbood, &amp; Sahib (2020)</strong>, <em>J. King Saud Univ. - Comput. Inf. Sci.</em>, DOI <code>10.1016/j.jksuci.2020.11.002</code></td>
+                      <td><strong>Amaireh, Al-Zoubi, &amp; Dib (2023)</strong>, <em>Evolutionary Intelligence</em> 16:1383-1422, DOI <code>10.1007/s12065-022-00749-4</code></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- CARD IV: POLA B MCT-SEEDED PSO -->
+            <section id="mct-pso" class="slide" aria-label="Kartu IV: Simulator MCT-seeded PSO">
+              <div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                <h2 class="slide-title text-[19px] md:text-[24px]">Pola B: Susun Start Cerdas dengan MCT, Lalu Sempurnakan PSO</h2>
+                <span class="font-mono-num text-[10.5px] text-pso interactive-only">Alsaidy et al. (2020), LJFP/MCT-PSO</span>
+              </div>
+
+              <div class="workbench-grid">
+                <div class="flex flex-col gap-2 min-w-0">
+                  <div class="studio-card p-2 diorama-focus-svg">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                      <span class="font-mono-num text-[10px] font-bold text-muted">ANIMASI BALOK TUGAS -> GANTT -> POPULASI PSO</span>
+                      <div id="mct-view-tabs" class="seg-tabs interactive-only" role="tablist" aria-label="Pilih jadwal yang ditampilkan">
+                        <div class="seg-indicator"></div>
+                        <button type="button" class="seg-tab" role="tab" data-value="mct">Jadwal MCT</button>
+                        <button type="button" class="seg-tab" role="tab" data-value="pso">Hasil PSO (iter t)</button>
+                      </div>
+                      <div class="flex gap-1.5">
+                        <button type="button" id="mct-anim-play" class="btn btn-mct btn-compact text-[11px]">Putar Animasi MCT</button>
+                        <button type="button" id="mct-anim-step" class="btn btn-compact text-[11px]">Langkah +1 Tugas</button>
+                      </div>
+                    </div>
+                    <div id="mct-pipeline-svg"></div>
+                  </div>
+
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div class="telemetry-cell"><span class="telemetry-k">Start Awal MCT</span><span id="mct-metric-init" class="telemetry-v text-mct">-</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">Akhir MCT + PSO</span><span id="mct-metric-best" class="telemetry-v text-pso">-</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">PSO Murni (Acak)</span><span id="mct-metric-pure" class="telemetry-v">-</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">Keunggulan MCT</span><span id="mct-metric-gain" class="telemetry-v text-alo">-</span></div>
+                  </div>
+
+                  <div class="studio-card p-2 interactive-only">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                      <button type="button" id="pso-iter-play" class="btn btn-pso btn-compact text-[11px]">Putar Iterasi PSO</button>
+                      <input id="pso-iter-range" type="range" class="studio-slider flex-1 min-w-[120px]" min="0" max="100" step="1" value="100" aria-label="Geser iterasi PSO t" />
+                      <span id="pso-iter-readout" class="font-mono-num text-[11px] font-bold text-pso">t = 100</span>
+                    </div>
+                    <div id="mct-conv-svg" class="cursor-crosshair" title="Geser pointer di grafik untuk memilih iterasi"></div>
+                    <div class="font-mono-num text-[10px] font-bold text-muted mt-1.5 mb-0.5">PARTIKEL GBEST = MATRIKS ALOKASI BINER (BARIS = VM, KOLOM = TUGAS)</div>
+                    <div id="pso-matrix-svg"></div>
+                  </div>
+                </div>
+
+                <aside class="studio-panel p-2.5 flex flex-col gap-2 overflow-y-auto interactive-only" aria-label="Panel parameter Pola B">
+                  <div class="font-mono-num text-[10.5px] font-bold text-ink border-b-2 border-[#1A1816] pb-1">UBAH PARAMETER JADWAL</div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-M-num" class="param-label">Tugas (M)</label><input id="mct-M-num" type="number" class="num-input" min="4" max="16" step="1" value="10" /></div>
+                      <input id="mct-M-range" type="range" class="studio-slider" min="4" max="16" step="1" value="10" aria-label="Jumlah tugas M" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-K-num" class="param-label">Mesin (K)</label><input id="mct-K-num" type="number" class="num-input" min="2" max="6" step="1" value="3" /></div>
+                      <input id="mct-K-range" type="range" class="studio-slider" min="2" max="6" step="1" value="3" aria-label="Jumlah mesin K" />
+                    </div>
+                  </div>
+
+                  <div class="param-row">
+                    <label for="mct-preset" class="param-label text-[11.5px]">Pola Beban Kerja (W_k)</label>
+                    <select id="mct-preset" class="select-input">
+                      <option value="skewed" selected>Skewed (Berat &amp; Ringan)</option>
+                      <option value="heavy-random">Berat-Acak (Heterogen Tinggi)</option>
+                      <option value="uniform">Seragam (Mendekati Rata)</option>
+                    </select>
+                  </div>
+
+                  <div class="param-row">
+                    <label for="mct-weights" class="param-label text-[11px]">Edit Bobot Manual (pisah koma)</label>
+                    <input id="mct-weights" type="text" class="text-input font-mono-num text-[11px]" aria-label="Bobot tugas manual" />
+                  </div>
+
+                  <div class="param-row">
+                    <div class="param-head"><label for="mct-seed-ratio-num" class="param-label" title="Paper: 100% partikel diinisialisasi dari MCT">Partikel Seeded MCT (%)</label><input id="mct-seed-ratio-num" type="number" class="num-input" min="10" max="100" step="5" value="100" /></div>
+                    <input id="mct-seed-ratio-range" type="range" class="studio-slider" min="10" max="100" step="5" value="100" aria-label="Porsi seeding MCT" />
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-N-num" class="param-label">Partikel N</label><input id="mct-N-num" type="number" class="num-input" min="10" max="100" step="2" value="70" /></div>
+                      <input id="mct-N-range" type="range" class="studio-slider" min="10" max="100" step="2" value="70" aria-label="Jumlah partikel PSO N" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-L-num" class="param-label">Iterasi L</label><input id="mct-L-num" type="number" class="num-input" min="20" max="200" step="10" value="100" /></div>
+                      <input id="mct-L-range" type="range" class="studio-slider" min="20" max="200" step="10" value="100" aria-label="Iterasi PSO L" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-wmax-num" class="param-label">Inersia w_max</label><input id="mct-wmax-num" type="number" class="num-input" min="0.5" max="1.0" step="0.05" value="0.9" /></div>
+                      <input id="mct-wmax-range" type="range" class="studio-slider" min="0.5" max="1.0" step="0.05" value="0.9" aria-label="Inersia w_max" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-wmin-num" class="param-label">Inersia w_min</label><input id="mct-wmin-num" type="number" class="num-input" min="0.1" max="0.6" step="0.05" value="0.2" /></div>
+                      <input id="mct-wmin-range" type="range" class="studio-slider" min="0.1" max="0.6" step="0.05" value="0.2" aria-label="Inersia w_min" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-c1-num" class="param-label">c1 (pbest)</label><input id="mct-c1-num" type="number" class="num-input" min="0.5" max="3.0" step="0.1" value="2.0" /></div>
+                      <input id="mct-c1-range" type="range" class="studio-slider" min="0.5" max="3.0" step="0.1" value="2.0" aria-label="c1 (pbest)" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="mct-c2-num" class="param-label">c2 (gbest)</label><input id="mct-c2-num" type="number" class="num-input" min="0.5" max="3.0" step="0.1" value="2.0" /></div>
+                      <input id="mct-c2-range" type="range" class="studio-slider" min="0.5" max="3.0" step="0.1" value="2.0" aria-label="c2 (gbest)" />
+                    </div>
+                  </div>
+
+                  <label class="flex items-center gap-2 text-[11.5px] cursor-pointer">
+                    <input id="mct-compare-pure" type="checkbox" checked class="w-4 h-4 accent-[#6D28D9]" />
+                    <span>Bandingkan dengan PSO Murni (Start Acak)</span>
+                  </label>
+
+                  <div class="flex gap-2">
+                    <button type="button" id="mct-run-btn" class="btn btn-primary btn-compact flex-1">Hitung Ulang</button>
+                    <button type="button" id="mct-reset-btn" class="btn btn-compact">Reset</button>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <!-- CARD V: ANATOMI TUNGGAL GOA & ALO -->
+            <section id="single-anatomy" class="slide" aria-label="Kartu V: Mengenal GOA dan ALO">
+              <div class="flex flex-wrap items-end justify-between gap-2 mb-2">
+                <h2 class="slide-title text-[20px] md:text-[25px]">Bagaimana GOA &amp; ALO Bekerja Sendiri (dan Celahnya)?</h2>
+                <div id="anat-tabs" class="seg-tabs" role="tablist" aria-label="Pilih algoritma tunggal">
+                  <div class="seg-indicator"></div>
+                  <button type="button" class="seg-tab" role="tab" data-value="goa">A. Kawanan Belalang (GOA)</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="alo">B. Perangkap Pasir (ALO)</button>
+                </div>
+              </div>
+
+              <div id="anat-panel-goa" class="anatomy-grid">
+                <div class="flex flex-col gap-2 min-w-0">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="studio-card p-2 diorama-focus-svg">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="font-mono-num text-[10px] font-bold text-muted">MEDAN GAYA SOSIAL s(r)</span>
+                        <button type="button" id="anat-goa-play" class="btn btn-goa btn-compact text-[11px] py-0.5 px-2">Putar Kawanan</button>
+                      </div>
+                      <div id="anat-social-field-svg"></div>
+                    </div>
+                    <div class="studio-card p-2 flex flex-col justify-between diorama-focus-svg">
+                      <div class="font-mono-num text-[10px] font-bold text-muted mb-1">SPESIMEN BELALANG GOA</div>
+                      <div id="anat-grasshopper-svg"></div>
+                    </div>
+                  </div>
+                  <div class="studio-card p-2 interactive-only"><div id="anat-social-curve-svg"></div></div>
+                </div>
+
+                <aside class="studio-panel p-3 flex flex-col gap-2.5 interactive-only">
+                  <div>
+                    <div class="font-mono-num text-[10.5px] font-bold text-goa mb-1">CARA KERJA SINGKAT GOA</div>
+                    <p class="text-[12.5px] text-ink m-0 leading-relaxed">
+                      Jika tetangga <strong>terlalu dekat</strong>, saling mendorong (<em>repulsi</em>). Jika <strong>terlalu jauh</strong>, saling menarik (<em>atraksi</em>) menuju jarak nyaman <code>r0</code>.
+                    </p>
+                  </div>
+                  <div class="param-row">
+                    <div class="param-head"><label for="anat-f-num" class="param-label">Kekuatan Tarik (f)</label><input id="anat-f-num" type="number" class="num-input" min="0.1" max="1.5" step="0.05" value="0.5" /></div>
+                    <input id="anat-f-range" type="range" class="studio-slider" min="0.1" max="1.5" step="0.05" value="0.5" aria-label="Intensitas atraksi f" />
+                  </div>
+                  <div class="param-row">
+                    <div class="param-head"><label for="anat-l-num" class="param-label">Jangkauan Tarik (l)</label><input id="anat-l-num" type="number" class="num-input" min="0.5" max="3.0" step="0.05" value="1.5" /></div>
+                    <input id="anat-l-range" type="range" class="studio-slider" min="0.5" max="3.0" step="0.05" value="1.5" aria-label="Skala panjang atraksi l" />
+                  </div>
+                  <div class="telemetry-cell">
+                    <span class="telemetry-k">Titik Jarak Nyaman (s(r) = 0)</span>
+                    <span id="anat-r0-readout" class="telemetry-v text-alo">r0 = 2.079</span>
+                  </div>
+                  <div class="story-lead story-lead-alo">
+                    <p class="text-[12px] text-ink m-0"><strong>Celah GOA:</strong> Parameter <code>c</code> linear mengecil terlalu pelan sehingga kurang tajam di akhir.</p>
+                  </div>
+                </aside>
+              </div>
+
+              <div id="anat-panel-alo" class="anatomy-grid hidden">
+                <div class="studio-card p-2.5 flex flex-col justify-center diorama-focus-svg">
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                    <span class="font-mono-num text-[10px] font-bold text-muted">ANIMASI PENAMPANG CORONG PASIR ALO (EQ. 1-5 &amp; 11-12)</span>
+                    <button type="button" id="anat-alo-play" class="btn btn-primary btn-compact text-[11px]">Putar Mangsa Tergelincir</button>
+                  </div>
+                  <div id="anat-pit-svg"></div>
+                </div>
+
+                <aside class="studio-panel p-3 flex flex-col gap-2.5 interactive-only">
+                  <div>
+                    <div class="font-mono-num text-[10.5px] font-bold text-alo mb-1">CARA KERJA SINGKAT ALO</div>
+                    <p class="text-[12.5px] text-ink m-0 leading-relaxed">
+                      Mangsa berjalan acak di lereng corong pasir. Makin tinggi progres <code>t/T</code>, tangga <code>w</code> menaikkan rasio <code>I</code> sehingga corong menyempit ke titik Elite.
+                    </p>
+                  </div>
+                  <div class="param-row">
+                    <div class="param-head"><label for="anat-progress-num" class="param-label">Progres Iterasi t/T (%)</label><input id="anat-progress-num" type="number" class="num-input" min="0" max="100" step="1" value="35" /></div>
+                    <input id="anat-progress-range" type="range" class="studio-slider" min="0" max="100" step="1" value="35" aria-label="Progres iterasi t per T" />
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="telemetry-cell"><span class="telemetry-k">Tangga w</span><span id="anat-w-readout" class="telemetry-v text-alo">w = 2</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">Rasio I</span><span id="anat-i-readout" class="telemetry-v">35.00</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">Lebar Sisa</span><span id="anat-shrink-readout" class="telemetry-v">2.86%</span></div>
+                  </div>
+                  <div class="story-lead">
+                    <p class="text-[12px] text-ink m-0"><strong>Celah ALO:</strong> Eksploitasi lokal tajam, tetapi rawan konvergensi dini di lubang lokal.</p>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <!-- CARD VI: POLA C FLOWCHART & MODIFIED c -->
+            <section id="hybrid-goa-alo" class="slide" aria-label="Kartu VI: Mekanisme Hybrid GOA-ALO">
+              <div class="mb-2">
+                <h2 class="slide-title text-[20px] md:text-[25px]">Cara Hybrid GOA-ALO Saling Melengkapi &amp; Pivot pada L/2</h2>
+              </div>
+
+              <div class="flowchart-grid">
+                <div class="flex flex-col gap-2 min-w-0">
+                  <div class="studio-card p-2 diorama-focus-svg"><div id="flow-svg"></div></div>
+                  <div class="studio-card-focus p-2.5 interactive-only">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                      <span id="flow-detail-step" class="font-mono-num text-[10.5px] font-bold text-alo">TAHAP 04</span>
+                      <span class="font-mono-num text-[10px] text-muted">PENJELASAN &amp; RUMUS</span>
+                    </div>
+                    <h3 id="flow-detail-title" class="font-display text-[15px] font-bold m-0 mb-1">Percepatan Pivot Eksploitasi di L/2</h3>
+                    <p id="flow-detail-plain" class="text-[12.5px] text-ink m-0 mb-1 leading-relaxed"></p>
+                    <div id="flow-detail-eq" class="font-mono-num text-[10.5px] bg-surface px-2 py-1 rounded-[5px] border border-[#1A1816] mb-1 overflow-x-auto"></div>
+                    <p id="flow-detail-why" class="text-[11.5px] text-muted m-0"></p>
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-2 min-w-0">
+                  <div class="studio-card p-2 diorama-focus-svg"><div id="c-decay-svg"></div></div>
+                  <div class="studio-panel p-3 flex flex-col gap-2 interactive-only">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div class="param-row">
+                        <div class="param-head"><label for="c-L-num" class="param-label">Iterasi L</label><input id="c-L-num" type="number" class="num-input" min="50" max="1000" step="10" value="200" /></div>
+                        <input id="c-L-range" type="range" class="studio-slider" min="50" max="1000" step="10" value="200" aria-label="Iterasi L" />
+                      </div>
+                      <div class="param-row">
+                        <div class="param-head"><label for="c-max-num" class="param-label">c_max</label><input id="c-max-num" type="number" class="num-input" min="0.5" max="2.0" step="0.05" value="1.0" /></div>
+                        <input id="c-max-range" type="range" class="studio-slider" min="0.5" max="2.0" step="0.05" value="1.0" aria-label="c_max" />
+                      </div>
+                      <div class="param-row">
+                        <div class="param-head"><label for="c-min-num" class="param-label">c_min</label><input id="c-min-num" type="number" class="num-input" min="0.00001" max="0.01" step="0.0005" value="0.00001" /></div>
+                        <input id="c-min-range" type="range" class="studio-slider" min="0.00001" max="0.01" step="0.0005" value="0.00001" aria-label="c_min" />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div class="telemetry-cell"><span class="telemetry-k">c GOA Standar di l = L/2</span><span id="c-half-std" class="telemetry-v">0.50000</span></div>
+                      <div class="telemetry-cell"><span class="telemetry-k">c Hybrid di l = L/2</span><span id="c-half-hyb" class="telemetry-v text-alo">1.000e-5</span></div>
+                    </div>
+                    <p class="text-[12px] text-muted m-0">
+                      Pada <strong>50% pertama</strong> (<code>l &lt;= L/2</code>) agen menyisir luas; pada <strong>50% kedua</strong> (<code>l &gt; L/2</code>) nilai <code>c</code> mendekati nol agar corong ALO mengunci global.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- CARD VII: LAB 3D & 2D INTERAKTIF -->
+            <section id="lab-3d" class="slide" aria-label="Kartu VII: Laboratorium Simulasi 3D Hybrid GOA-ALO">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <h2 class="slide-title text-[19px] md:text-[23px]">Laboratorium Simulasi 3D: Hybrid vs GOA vs ALO</h2>
+                <div id="lab-mode-tabs" class="seg-tabs" role="tablist" aria-label="Mode simulasi">
+                  <div class="seg-indicator"></div>
+                  <button type="button" class="seg-tab" role="tab" data-value="hybrid">Hybrid GOA-ALO</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="goa">GOA Murni</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="alo">ALO Murni</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="compare">Bandingkan Ketiganya</button>
+                </div>
+              </div>
+
+              <div class="lab-grid">
+                <div class="flex flex-col gap-1.5 min-w-0 min-h-0">
+                  <div id="lab-viewport" class="lab-viewport">
+                    <div id="lab-canvas-mount" class="w-full h-full"></div>
+                    <div class="absolute top-2 left-2 z-10">
+                      <button type="button" id="lab-toggle-render" class="btn btn-compact text-[11px] py-0.5 px-2.5 bg-elevated">Ganti ke 2D Kontur</button>
+                    </div>
+                    <div id="lab-state-banner" class="lab-state-banner" role="status">
+                      <span id="lab-state-text">Menyiapkan lanskap fungsi topografi...</span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
+                    <div class="telemetry-cell"><span class="telemetry-k">Iterasi (l/L)</span><span id="tel-iter" class="telemetry-v">0 / 150</span></div>
+                    <div class="telemetry-cell sm:col-span-2"><span class="telemetry-k">Fase Aktif</span><span id="tel-phase" class="telemetry-v text-goa">Siap (Idle)</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">Nilai c</span><span id="tel-c" class="telemetry-v">1.00</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">w &amp; I</span><span id="tel-wi" class="telemetry-v">w=1 | I=1.0</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">Elite (x1, x2)</span><span id="tel-elite-pos" class="telemetry-v">-</span></div>
+                    <div class="telemetry-cell"><span class="telemetry-k">f(Elite) / Mean</span><span id="tel-elite-fit" class="telemetry-v text-alo">-</span><span id="tel-mean-fit" class="block font-mono-num text-[9.5px] text-muted">-</span></div>
+                  </div>
+
+                  <div class="studio-card p-1.5"><div id="lab-conv-svg"></div></div>
+                </div>
+
+                <aside class="studio-panel p-2.5 flex flex-col gap-1.5 overflow-y-auto interactive-only" aria-label="Kontrol parameter Lab 3D">
+                  <div class="param-row">
+                    <label for="lab-func" class="param-label text-[11.5px]">Fungsi Uji (Tabel 4 &amp; 5 Paper)</label>
+                    <select id="lab-func" class="select-input">
+                      <option value="F1">F1: Sphere (1 Lembah, [-100, 100])</option>
+                      <option value="F13" selected>F13: Rastrigin (Multimodal, [-5.12, 5.12])</option>
+                      <option value="F14">F14: Ackley (Multimodal, [-32, 32])</option>
+                      <option value="F15">F15: Griewank (Multimodal, [-600, 600])</option>
+                      <option value="F31">F31: Cosine Mixture ([-1, 1])</option>
+                    </select>
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-1.5">
+                    <button type="button" id="lab-play-btn" class="btn btn-primary btn-compact col-span-2">Jalankan (Space)</button>
+                    <button type="button" id="lab-step-btn" class="btn btn-compact">+1 Iter</button>
+                  </div>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" id="lab-reset-btn" class="btn btn-compact">Reset</button>
+                    <button type="button" id="lab-preset-paper-btn" class="btn btn-compact">Preset L=1000</button>
+                  </div>
+
+                  <div class="param-row">
+                    <div class="param-head"><label for="lab-speed-num" class="param-label">Kecepatan (1x-10x)</label><input id="lab-speed-num" type="number" class="num-input" min="1" max="10" step="1" value="3" /></div>
+                    <input id="lab-speed-range" type="range" class="studio-slider" min="1" max="10" step="1" value="3" aria-label="Kecepatan simulasi" />
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <div class="param-row">
+                      <div class="param-head"><label for="lab-N-num" class="param-label">Agen N</label><input id="lab-N-num" type="number" class="num-input" min="10" max="80" step="2" value="40" /></div>
+                      <input id="lab-N-range" type="range" class="studio-slider" min="10" max="80" step="2" value="40" aria-label="Agen N" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="lab-L-num" class="param-label">Iterasi L</label><input id="lab-L-num" type="number" class="num-input" min="40" max="1000" step="10" value="150" /></div>
+                      <input id="lab-L-range" type="range" class="studio-slider" min="40" max="500" step="10" value="150" aria-label="Iterasi L" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <div class="param-row">
+                      <div class="param-head"><label for="lab-cmax-num" class="param-label">c_max</label><input id="lab-cmax-num" type="number" class="num-input" min="0.5" max="2.0" step="0.05" value="1.0" /></div>
+                      <input id="lab-cmax-range" type="range" class="studio-slider" min="0.5" max="2.0" step="0.05" value="1.0" aria-label="c_max" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="lab-cmin-num" class="param-label">c_min</label><input id="lab-cmin-num" type="number" class="num-input" min="0.00001" max="0.05" step="0.0005" value="0.00001" /></div>
+                      <input id="lab-cmin-range" type="range" class="studio-slider" min="0.00001" max="0.05" step="0.0005" value="0.00001" aria-label="c_min" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <div class="param-row">
+                      <div class="param-head"><label for="lab-f-num" class="param-label">Tarik f</label><input id="lab-f-num" type="number" class="num-input" min="0.1" max="1.5" step="0.05" value="0.5" /></div>
+                      <input id="lab-f-range" type="range" class="studio-slider" min="0.1" max="1.5" step="0.05" value="0.5" aria-label="Tarik f" />
+                    </div>
+                    <div class="param-row">
+                      <div class="param-head"><label for="lab-l-num" class="param-label">Jarak l</label><input id="lab-l-num" type="number" class="num-input" min="0.5" max="3.0" step="0.05" value="1.5" /></div>
+                      <input id="lab-l-range" type="range" class="studio-slider" min="0.5" max="3.0" step="0.05" value="1.5" aria-label="Jarak l" />
+                    </div>
+                  </div>
+
+                  <div class="flex items-end gap-1.5">
+                    <div class="param-row flex-1">
+                      <label for="lab-seed" class="param-label text-[11px]">Random Seed</label>
+                      <input id="lab-seed" type="number" class="num-input w-full text-left" value="42" step="1" />
+                    </div>
+                    <button type="button" id="lab-reseed-btn" class="btn btn-compact">Acak</button>
+                  </div>
+
+                  <div class="border-t-2 border-[#1A1816] pt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] font-semibold">
+                    <label class="flex items-center gap-1 cursor-pointer"><input id="lab-layer-trail" type="checkbox" checked class="accent-[#1D4ED8]" /> Jejak</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input id="lab-layer-vectors" type="checkbox" class="accent-[#1D4ED8]" /> Vektor</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input id="lab-layer-traps" type="checkbox" checked class="accent-[#B91C1C]" /> Perangkap</label>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <!-- CARD VIII: BUKTI EMPIRIS PAPER -->
+            <section id="benchmarks" class="slide" aria-label="Kartu VIII: Bukti Empiris Amaireh et al. 2023">
+              <div class="flex flex-wrap items-end justify-between gap-2 mb-2">
+                <h2 class="slide-title text-[20px] md:text-[25px]">Bukti Empiris Nyata (Amaireh et al., 2023)</h2>
+                <div id="bench-tabs" class="seg-tabs" role="tablist" aria-label="Pilih benchmark paper">
+                  <div class="seg-indicator"></div>
+                  <button type="button" class="seg-tab" role="tab" data-value="unimodal">Unimodal F1-F11</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="multimodal">Multimodal F12-F32</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="cec2015">CEC2015</button>
+                  <button type="button" class="seg-tab" role="tab" data-value="antenna">Antena LAA &amp; CCAA</button>
+                </div>
+              </div>
+
+              <div class="bench-grid">
+                <div class="studio-card p-3 flex flex-col justify-between gap-2 min-w-0 diorama-focus-svg">
+                  <div>
+                    <h3 id="bench-title" class="font-display text-[17px] font-bold m-0">Benchmark Klasik Unimodal</h3>
+                    <p id="bench-subtitle" class="text-[12px] text-muted mt-0.5 mb-1"></p>
+                  </div>
+                  <div id="bench-chart-svg"></div>
+                </div>
+
+                <aside class="flex flex-col gap-2 min-w-0 interactive-only">
+                  <div class="studio-card-focus p-3">
+                    <div class="font-mono-num text-[10px] text-alo font-bold mb-0.5">INSPEKSI BAR TERPILIH</div>
+                    <div class="flex items-baseline justify-between gap-2">
+                      <span id="bench-tooltip-algo" class="font-display text-[17px] font-bold">Hybrid GOA-ALO</span>
+                      <span id="bench-tooltip-val" class="font-mono-num text-[16px] font-bold text-alo">15</span>
+                    </div>
+                    <p id="bench-tooltip-note" class="text-[12.5px] text-muted mt-1 mb-0 leading-relaxed"></p>
+                  </div>
+
+                  <div id="bench-key-metrics" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+
+                  <div class="story-lead story-lead-alo">
+                    <div class="font-mono-num text-[10px] font-bold text-alo mb-0.5">TRADE-OFF WAKTU CPU (SECT. 5.3)</div>
+                    <p class="text-[12px] text-ink m-0">Sintesis antena LAA 32-elemen: <strong>Hybrid 213 s</strong>, dibanding <strong>GOA 195 s</strong> dan <strong>ALO 67 s</strong>.</p>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <!-- CARD IX: MATRIKS KEPUTUSAN & DAFTAR PUSTAKA -->
+            <section id="synthesis" class="slide" aria-label="Kartu IX: Panduan Memilih Pola dan Daftar Pustaka">
+              <div class="mb-2">
+                <h2 class="slide-title text-[20px] md:text-[25px]">Kapan Memilih Pola B vs Pola C? &amp; Daftar Pustaka</h2>
+              </div>
+
+              <div class="synthesis-grid">
+                <div class="flex flex-col gap-2 min-w-0">
+                  <div class="studio-panel p-3 flex flex-col gap-2 interactive-only">
+                    <div class="grid grid-cols-2 gap-2">
+                      <button type="button" class="btn btn-compact btn-goa decision-opt" data-group="domain" data-value="discrete" aria-pressed="true">Penjadwalan / Diskrit</button>
+                      <button type="button" class="btn btn-compact decision-opt" data-group="domain" data-value="continuous" aria-pressed="false">Kontinu / Multimodal</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button type="button" class="btn btn-compact btn-goa decision-opt" data-group="budget" data-value="tight" aria-pressed="true">Cepat &amp; Hemat CPU</button>
+                      <button type="button" class="btn btn-compact decision-opt" data-group="budget" data-value="accuracy" aria-pressed="false">Akurasi Global Maksimal</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button type="button" class="btn btn-compact btn-goa decision-opt" data-group="prior" data-value="heuristic" aria-pressed="true">Heuristik Awal Ada</button>
+                      <button type="button" class="btn btn-compact decision-opt" data-group="prior" data-value="none" aria-pressed="false">Tanpa Prior (Black-Box)</button>
+                    </div>
+                    <div class="story-lead story-lead-alo"><p id="dec-summary" class="text-[12.5px] text-ink m-0"></p></div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div id="dec-card-b" class="decision-card is-recommended-mct">
+                      <div class="flex items-center gap-2 font-mono-num text-[11px] font-bold text-mct mb-1"><span class="shape-key-sq"></span>POLA B: MCT-SEEDED PSO</div>
+                      <ul class="text-[12px] text-muted pl-4 m-0 space-y-0.5">
+                        <li>Start awal rapi sejak iterasi 0.</li>
+                        <li>Overhead ringan <code>O(M * K)</code>.</li>
+                        <li>Ideal untuk penjadwalan diskrit.</li>
+                      </ul>
+                    </div>
+                    <div id="dec-card-c" class="decision-card">
+                      <div class="flex items-center gap-2 font-mono-num text-[11px] font-bold text-alo mb-1"><span class="shape-key-tri"></span>POLA C: HYBRID GOA-ALO</div>
+                      <ul class="text-[12px] text-muted pl-4 m-0 space-y-0.5">
+                        <li>Pivot eksploitasi di <code>L/2</code>.</li>
+                        <li>Rank #1 pada 32 benchmark klasik.</li>
+                        <li>Ideal untuk kontinu multimodal.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <aside class="studio-card p-3 flex flex-col justify-between gap-2 interactive-only">
+                  <div>
+                    <div class="font-mono-num text-[10.5px] font-bold text-ink border-b-2 border-[#1A1816] pb-1 mb-2">DAFTAR PUSTAKA UTAMA</div>
+                    <ol class="text-[12px] text-ink pl-4 m-0 space-y-1.5 leading-relaxed">
+                      <li><strong>Amaireh, A. A., Al-Zoubi, A. S., &amp; Dib, N. I. (2023).</strong> <em>A new hybrid optimization technique based on antlion and grasshopper optimization algorithms.</em> Evolutionary Intelligence, 16, 1383-1422. DOI: <code>10.1007/s12065-022-00749-4</code>.</li>
+                      <li><strong>Saremi, S., Mirjalili, S., &amp; Lewis, A. (2017).</strong> <em>Grasshopper Optimisation Algorithm: Theory and application.</em> Advances in Engineering Software, 105, 30-47.</li>
+                      <li><strong>Mirjalili, S. (2015).</strong> <em>The Ant Lion Optimizer.</em> Advances in Engineering Software, 83, 80-98.</li>
+                      <li><strong>Wolpert, D. H., &amp; Macready, W. G. (1997).</strong> <em>No Free Lunch Theorems for Optimization.</em> IEEE Trans. Evolutionary Computation, 1(1), 67-82.</li>
+                      <li><strong>Alsaidy, S. A., Abbood, A. D., &amp; Sahib, M. A. (2020).</strong> <em>Heuristic initialization of PSO task scheduling algorithm in cloud computing.</em> Journal of King Saud University - Computer and Information Sciences. DOI: <code>10.1016/j.jksuci.2020.11.002</code>. <span class="text-muted">(Formulasi MCT-seeded PSO, Pola B)</span></li>
+                    </ol>
+                  </div>
+                  <div class="border-t-2 border-[#1A1816] pt-1.5 flex justify-between font-mono-num text-[10px] text-muted">
+                    <span>CARD WARS 3D + SIR PIP</span>
+                    <span>SOKA SEMESTER 5</span>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+          </div>
+        </div>
+
+        <!-- ==================== CARD BACK FACE (UNIFIED 1-COLOR CLOSED CARD) ==================== -->
+        <div id="card-back-face" class="card-face card-face-back" role="region" aria-label="Sisi belakang kartu tertutup">
+          <div class="card-back-inner">
+            <div id="card-back-emblem"></div>
+            <div id="card-back-role" class="font-mono-num text-[12px] font-bold tracking-wider text-[#FDE047]">KARTU I / DEK PENGANTAR</div>
+            <h2 id="card-back-title" class="font-display font-bold text-[22px] md:text-[28px] text-[#FFFDF7] m-0 leading-tight">
+              Bagaimana Dua Algoritma Optimasi Bekerja Sama?
+            </h2>
+            <p id="card-back-teaser" class="text-[14px] text-[#FFFDF7] opacity-90 max-w-[46ch] m-0 leading-relaxed"></p>
+            <button type="button" id="card-reveal-btn" class="btn btn-gold mt-1">Balik &amp; Buka Kartu (Enter / Space)</button>
+            <span class="font-mono-num text-[11px] text-[#FDE047]">Klik di mana saja pada kartu ini untuk membaliknya</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ====================================================================== -->
+  <!-- FANNED HAND OF 9 CARD WARS CARDS AT BOTTOM                             -->
+  <!-- ====================================================================== -->
+  <nav class="card-hand-dock" aria-label="Dek 9 kartu di tangan">
+    <button type="button" id="hand-prev" class="btn btn-primary btn-compact mb-2" aria-label="Kartu sebelumnya">&lt; Kartu</button>
+    <div id="hand-fan" class="hand-fan" role="list"></div>
+    <button type="button" id="hand-next" class="btn btn-gold btn-compact mb-2" aria-label="Kartu berikutnya">Kartu &gt;</button>
+  </nav>
+
+  <!-- ====================================================================== -->
+  <!-- 9-CARD TABLETOP SPREAD MODAL (MEJA DEK - SINGLE GLASS ELEMENT R-10)    -->
+  <!-- ====================================================================== -->
+  <div id="table-spread-modal" class="table-spread-modal" role="dialog" aria-modal="true" aria-labelledby="spread-heading">
+    <div class="table-spread-board">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <div class="font-mono-num text-[11px] font-bold text-[#FDE047]">MEJA PERMAINAN 9 KARTU SOKA</div>
+          <h2 id="spread-heading" class="font-display text-[22px] font-bold text-[#FFFDF7] m-0">Pilih Kartu untuk Dilempar Sir Pip ke Meja</h2>
+        </div>
+        <button type="button" id="spread-close" class="btn btn-gold btn-compact">Tutup (Esc)</button>
+      </div>
+      <div id="spread-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4"></div>
+      <div class="font-mono-num text-[11px] text-[#FFFDF7] flex flex-wrap gap-x-5 gap-y-1 border-t-2 border-[#FDE047] pt-3">
+        <span>Space / N: Lanjut Beat Shorts</span>
+        <span>B: Mundur Beat</span>
+        <span>1-9 / Panah: Pindah Kartu</span>
+        <span>Enter / F: Balik Kartu</span>
+        <span>T: Intip Meja 3D &amp; Sir Pip</span>
+        <span>G: Meja 9 Kartu</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/ui/controls.js?v=7"></script>
+</body>
+</html>
